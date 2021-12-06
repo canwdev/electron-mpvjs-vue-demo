@@ -1,46 +1,53 @@
 <template>
-  <div class="vlc-player" :class="{'_fullscreen': isFullscreen}">
+  <div
+    class="vlc-player"
+    :class="{'_fullscreen': isFullscreen, 'hide-cursor': !isShowControls}"
+    @mousemove="handleMouseMove"
+  >
     <div v-if="debug" class="debug-wrap">
       <div>src: {{ src }}</div>
       <button @click="logInfo">Log</button>
     </div>
     <canvas ref="vlcCanvas"></canvas>
 
-    <div v-if="controls && (src || debug)" class="control-wrap">
-      <div class="control-item actions-left">
-        <button @click="isPlaying ? pause() : play()">
-          {{ isPlaying ? 'Pause' : 'Play' }}
-        </button>
-      </div>
-
-      <SeekBar
-        :value="mCurrent"
-        :max="duration"
-        @input="progressSeeking"
-        @change="progressChange"
-        class="control-item progress-bar"
-      />
-
-      <div class="control-item time-info-wrap">
-        <span class="time-info time-current">{{ timeToHMS(mCurrent / 1000) }}</span>/
-        <span class="time-info time-duration">{{ timeToHMS(duration / 1000) }}</span>
-      </div>
-
-      <div class="control-item actions-right">
-        <div class="volume-toggle-wrap">
-          <div class="volume-toggle-box">
-            <SeekBar
-              :value="volume"
-              @input="volumeChange"
-              @change="volumeChange"
-              :max="200"
-            />
-          </div>
-          <button @click="toggleVolume">{{ volume > 0 ? 'Vol.' : 'Mute' }}</button>
+    <transition name="fade">
+      <div v-if="isShowControls && controls" class="control-wrap">
+        <div class="control-item actions-left">
+          <button @click="isPlaying ? pause() : play()">
+            {{ isPlaying ? 'Pause' : 'Play' }}
+          </button>
         </div>
-        <button @click="toggleFullscreen">{{ isFullscreen ? 'Exit' : 'Ful.' }}</button>
+
+        <SeekBar
+          :value="mCurrent"
+          :max="duration"
+          @input="progressSeeking"
+          @change="progressChange"
+          class="control-item progress-bar"
+        />
+
+        <div class="control-item time-info-wrap">
+          <span class="time-info time-current">{{ timeToHMS(mCurrent / 1000) }}</span>/
+          <span class="time-info time-duration">{{ timeToHMS(duration / 1000) }}</span>
+        </div>
+
+        <div class="control-item actions-right">
+          <div class="volume-toggle-wrap">
+            <div class="volume-toggle-box">
+              <SeekBar
+                :value="volume"
+                @input="volumeChange"
+                @change="volumeChange"
+                :max="200"
+              />
+            </div>
+            <button @click="toggleVolume">{{ volume > 0 ? 'Vol.' : 'Mute' }}</button>
+          </div>
+          <button @click="toggleFullscreen">{{ isFullscreen ? 'Exit' : 'Ful.' }}</button>
+        </div>
       </div>
-    </div>
+    </transition>
+
   </div>
 </template>
 
@@ -53,6 +60,8 @@ import screenfull from 'screenfull';
 
 
 const webChimera = electronAPI.require('webchimera.js')
+
+let timer = null
 
 export default {
   name: 'VlcPlayer',
@@ -76,6 +85,10 @@ export default {
       type: Boolean,
       default: true
     },
+    persistControls: {
+      type: Boolean,
+      default: false
+    },
     debug: {
       type: Boolean,
       default: false
@@ -86,6 +99,7 @@ export default {
       isPlaying: false,
       isSeeking: false,
       isFullscreen: false,
+      isShowControls: false,
       duration: 0,
       current: 0,
       mCurrent: 0,
@@ -124,6 +138,21 @@ export default {
   },
   methods: {
     timeToHMS,
+
+    handleMouseMove() {
+      if (!this.controls) return
+      this.showControl()
+    },
+    showControl() {
+      this.isShowControls = true
+      clearTimeout(timer)
+      if (this.persistControls) {
+        return
+      }
+      timer = setTimeout(() => {
+        this.isShowControls = false
+      }, 2000)
+    },
     debugLog(...args) {
       if (!this.debug) {
         return
@@ -180,6 +209,7 @@ export default {
       if (this.autoplay) {
         this.play()
       }
+      this.showControl()
     },
     cleanupPlayer(isClose) {
       if (this.player) {
@@ -263,9 +293,23 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s;
+}
+
+.fade-enter, .fade-leave-to {
+  opacity: 0;
+}
+
 .vlc-player {
   display: flex;
   position: relative;
+
+  &.hide-cursor {
+    * {
+      cursor: none;
+    }
+  }
 
   &._fullscreen {
     position: fixed;
