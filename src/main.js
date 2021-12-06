@@ -1,12 +1,14 @@
 const path = require('path')
-process.env['VLC_PLUGIN_PATH'] = require('path').join(__dirname, '../node_modules/webchimera.js/plugins');
 const {
   isDev,
+  getCorrectPath,
 } = require('@canwdev/electron-utils')
 const {app} = require('electron')
 const httpServer = require('http-server/lib/http-server')
 const portfinder = require('portfinder')
 const wm = require('./utils/wm-instance')
+
+process.env['VLC_PLUGIN_PATH'] = getCorrectPath(path.join(__dirname, '../'), 'node_modules/webchimera.js/plugins')
 
 let port = 8000 //默认端口
 const host = '127.0.0.1'
@@ -42,12 +44,10 @@ const createWindow = () => {
 app.on('ready', async () => {
   if (isDev) {
     createWindow()
+    require('vue-devtools').install()
   } else {
-    startClientProd()
+    startClientProd(getCorrectPath(path.join(__dirname, '../'), 'frontend/dist'))
   }
-
-  // await session.defaultSession.loadExtension(path.join(__dirname, 'vue-devtools'))
-  require('vue-devtools').install()
 })
 
 function startClientProd(publicPath) {

@@ -4,8 +4,11 @@ asar: true
 asarUnpack:
   - "static"
   - "public"
+  - "frontend"
+  - "node_modules/webchimera.js"
 files:
   - "public/**/*"
+  - "frontend/dist/**/*"
   - "src/**/*"
   - "static/**/*"
 publish:

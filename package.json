@@ -5,9 +5,17 @@
   "repository": "git@gitee.com:canwdev/electron-webchimera-vue.git",
   "license": "MIT",
   "scripts": {
+    "inst": "yarn && yarn install --ignore-scripts",
+    "serve-video": "http-server -p 8080 ./test",
     "dev:frontend": "cross-env PORT=8000 yarn --cwd './frontend' serve",
     "dev:electron": "cross-env ELECTRON_START_URL=http://localhost:8000 electron .",
-    "is": "yarn install --ignore-scripts"
+    "prod:electron": "cross-env ELECTRON_IS_DEV=0 electron .",
+    "build-dir": "yarn run build:frontend && yarn run build:electron-dir",
+    "build": "yarn run build:frontend && yarn run build:electron",
+    "build:frontend": "cross-env yarn --cwd './frontend' build",
+    "build:electron-dir": "electron-builder --dir",
+    "build:electron": "electron-builder",
+    "build:electron-ia32": "electron-builder --ia32"
   },
   "devDependencies": {
     "cross-env": "^7.0.2",

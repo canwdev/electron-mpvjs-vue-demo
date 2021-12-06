@@ -66,11 +66,11 @@ export default {
       loop: true,
       debug: true,
       videoList: [
-        'http://127.0.0.1:8080/WebUnsupported/test.avi',
+        // 'http://127.0.0.1:8080/WebUnsupported/test.avi',
         'http://127.0.0.1:8080/WebUnsupported/video-15s.avi',
         'http://127.0.0.1:8080/WebUnsupported/HDRSample.mkv',
         'http://127.0.0.1:8080/WebUnsupported/SDRSample.mkv',
-        'http://127.0.0.1:8080/WebUnsupported/test.mkv',
+        // 'http://127.0.0.1:8080/WebUnsupported/test.mkv',
       ]
     }
   },
