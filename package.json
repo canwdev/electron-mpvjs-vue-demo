@@ -1,0 +1,25 @@
+{
+  "name": "electron-webchimera-vue",
+  "version": "1.0.0",
+  "main": "src/main.js",
+  "repository": "git@gitee.com:canwdev/electron-webchimera-vue.git",
+  "license": "MIT",
+  "scripts": {
+    "dev:frontend": "cross-env PORT=8000 yarn --cwd './frontend' serve",
+    "dev:electron": "cross-env ELECTRON_START_URL=http://localhost:8000 electron .",
+    "is": "yarn install --ignore-scripts"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.2",
+    "electron": "12.2.2",
+    "electron-builder": "22.8.1",
+    "vue-devtools": "^5.1.4"
+  },
+  "dependencies": {
+    "@canwdev/electron-utils": "^0.1.0",
+    "@canwdev/electron-window-manager": "^0.1.7",
+    "webchimera.js": "*",
+    "http-server": "^0.12.3",
+    "portfinder": "^1.0.28"
+  }
+}
