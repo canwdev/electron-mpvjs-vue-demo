@@ -7762,6 +7762,11 @@ wcwidth@^1.0.1:
   dependencies:
     defaults "^1.0.3"
 
+webgl-video-renderer@0.2.0:
+  version "0.2.0"
+  resolved "https://registry.npmmirror.com/webgl-video-renderer/download/webgl-video-renderer-0.2.0.tgz#5c6516dc9e8ecf82d1fa56e824990fdb38bb778d"
+  integrity sha1-XGUW3J6Oz4LR+lboJJkP2zi7d40=
+
 webpack-bundle-analyzer@^3.8.0:
   version "3.9.0"
   resolved "https://registry.npmmirror.com/webpack-bundle-analyzer/download/webpack-bundle-analyzer-3.9.0.tgz?cache=0&sync_timestamp=1634019921368&other_urls=https%3A%2F%2Fregistry.npmmirror.com%2Fwebpack-bundle-analyzer%2Fdownload%2Fwebpack-bundle-analyzer-3.9.0.tgz#f6f94db108fb574e415ad313de41a2707d33ef3c"
