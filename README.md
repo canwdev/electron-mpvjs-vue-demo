@@ -1,3 +1,7 @@
+# electron-webchimera-vue Demo
+
+![img](./screenshot.png)
+
 ## webchimera.js
 
 https://github.com/RSATom/WebChimera.js
@@ -17,5 +21,6 @@ process.env['VLC_PLUGIN_PATH'] = require('path').join(__dirname, '../node_module
 Install dependencies:
 
 ```
+yarn
 yarn install --ignore-scripts
 ```

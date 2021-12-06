@@ -1,15 +1,16 @@
 <template>
-  <div class="vlc-player">
+  <div class="vlc-player" :class="{'_fullscreen': isFullscreen}">
     <div v-if="debug" class="debug-wrap">
       <div>src: {{ src }}</div>
       <button @click="logInfo">Log</button>
     </div>
     <canvas ref="vlcCanvas"></canvas>
 
-    <div v-if="controls && src" class="control-wrap">
+    <div v-if="controls && (src || debug)" class="control-wrap">
       <div class="control-item actions-left">
-        <button v-if="!isPlaying" @click="play">Play</button>
-        <button v-else @click="pause">Pause</button>
+        <button @click="isPlaying ? pause() : play()">
+          {{ isPlaying ? 'Pause' : 'Play' }}
+        </button>
       </div>
 
       <SeekBar
@@ -17,12 +18,27 @@
         :max="duration"
         @input="progressSeeking"
         @change="progressChange"
-        class="control-item"
+        class="control-item progress-bar"
       />
 
       <div class="control-item time-info-wrap">
         <span class="time-info time-current">{{ timeToHMS(mCurrent / 1000) }}</span>/
         <span class="time-info time-duration">{{ timeToHMS(duration / 1000) }}</span>
+      </div>
+
+      <div class="control-item actions-right">
+        <div class="volume-toggle-wrap">
+          <div class="volume-toggle-box">
+            <SeekBar
+              :value="volume"
+              @input="volumeChange"
+              @change="volumeChange"
+              :max="200"
+            />
+          </div>
+          <button @click="toggleVolume">{{ volume > 0 ? 'Vol.' : 'Mute' }}</button>
+        </div>
+        <button @click="toggleFullscreen">{{ isFullscreen ? 'Exit' : 'Ful.' }}</button>
       </div>
     </div>
   </div>
@@ -33,6 +49,8 @@ const {electronAPI} = window
 import webglVideoRender from 'webgl-video-renderer'
 import SeekBar from '@/components/SeekBar'
 import {timeToHMS} from './utils'
+import screenfull from 'screenfull';
+
 
 const webChimera = electronAPI.require('webchimera.js')
 
@@ -67,9 +85,11 @@ export default {
     return {
       isPlaying: false,
       isSeeking: false,
+      isFullscreen: false,
       duration: 0,
       current: 0,
       mCurrent: 0,
+      volume: 0,
     }
   },
   watch: {
@@ -92,6 +112,12 @@ export default {
   computed: {},
   mounted() {
     this.initPlayer()
+    screenfull.on('error', event => {
+      console.error('Failed to enable fullscreen', event);
+    })
+    screenfull.onchange(() => {
+      this.isFullscreen = screenfull.isFullscreen
+    })
   },
   beforeDestroy() {
     this.cleanupPlayer(true)
@@ -117,6 +143,7 @@ export default {
       //   this.debugLog('onLogMessage', message)
       // }
       this.setPlaylistLoop(this.loop)
+      this.volume = player.volume
       player.onFrameReady = (frame) => {
         renderContext.render(frame, frame.width, frame.height, frame.uOffset, frame.vOffset)
       }
@@ -152,19 +179,9 @@ export default {
       this.player.playlist.add(src)
       if (this.autoplay) {
         this.play()
-      } else {
-        this.$nextTick(() => {
-          if (this.renderContext) {
-            this.renderContext.fillBlack()
-          }
-        })
       }
-
     },
     cleanupPlayer(isClose) {
-      if (this.renderContext) {
-        this.renderContext.fillBlack()
-      }
       if (this.player) {
         this.player.pause()
         this.isPlaying = false
@@ -178,6 +195,12 @@ export default {
           this.renderContext = null
         }
       }
+
+      this.$nextTick(() => {
+        if (this.renderContext) {
+          this.renderContext.fillBlack()
+        }
+      })
     },
     setPlaylistLoop(val) {
       if (val) {
@@ -192,12 +215,18 @@ export default {
     pause() {
       this.player.playlist.pause()
     },
+    togglePause() {
+      this.player.playlist.togglePause()
+    },
+    stop() {
+      this.player.playlist.stop()
+    },
     logInfo() {
       console.info('renderContext', this.renderContext)
       console.info('player', this.player)
     },
     progressSeeking(value) {
-      this.debugLog('progressSeeking', evt.target.value)
+      this.debugLog('progressSeeking', value)
       this.isSeeking = true
       this.mCurrent = Number(value)
     },
@@ -207,6 +236,28 @@ export default {
       this.isSeeking = false
       this.player.time = value
     },
+    toggleVolume() {
+      if (this.volume > 0) {
+        this._previousVolume = this.volume
+        this.volumeChange(0)
+      } else {
+        this.volumeChange(this._previousVolume || 100)
+      }
+    },
+    volumeChange(value) {
+      this.volume = this.player.volume = Number(value)
+    },
+    toggleFullscreen() {
+      if (screenfull.isEnabled) {
+        if (!this.isFullscreen) {
+          screenfull.request();
+        } else {
+          screenfull.exit();
+        }
+      } else {
+        alert('当前浏览器不支持全屏')
+      }
+    }
   }
 }
 </script>
@@ -214,9 +265,18 @@ export default {
 <style lang="scss" scoped>
 .vlc-player {
   display: flex;
-  max-width: 100%;
-  max-height: 500px;
   position: relative;
+
+  &._fullscreen {
+    position: fixed;
+    z-index: 100;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100%;
+    width: 100%;
+  }
 
   canvas {
     width: 100%;
@@ -262,9 +322,9 @@ export default {
       }
     }
 
-    .seekbar-wrap {
+    .progress-bar {
       flex: 1;
-      padding: 10px;
+      padding-left: 10px;
     }
 
     .time-info-wrap {
@@ -275,6 +335,32 @@ export default {
         padding: 10px;
       }
 
+    }
+
+    .actions-right {
+      padding-right: 10px;
+
+      .volume-toggle-wrap {
+        position: relative;
+
+        .volume-toggle-box {
+          position: absolute;
+          right: 0;
+          top: -100%;
+          width: 100px;
+          visibility: hidden;
+          opacity: 0;
+          background: rgba(0, 0, 0, 0.38);
+          padding: 0 5px;
+        }
+
+        &:hover {
+          .volume-toggle-box {
+            visibility: visible;
+            opacity: 1;
+          }
+        }
+      }
     }
   }
 }
