@@ -4,11 +4,31 @@
     :class="{'_fullscreen': isFullscreen, 'hide-cursor': !isShowControls}"
     @mousemove="handleMouseMove"
   >
+    <transition name="fade">
+      <div
+        v-if="showShade && src"
+        v-show="!isPlaying"
+        class="play-cover"
+        @click="play"
+      >
+        <div class="icon-wrap" :class="{'cursor-pointer': !isPlaying}">
+          <span class="iconfont">▶</span>
+        </div>
+      </div>
+    </transition>
+
     <div v-if="debug" class="debug-wrap">
       <div>src: {{ src }}</div>
       <button @click="logInfo">Log</button>
     </div>
-    <canvas ref="vlcCanvas"></canvas>
+    <canvas
+      ref="vlcCanvas"
+      @click="togglePause"
+    ></canvas>
+
+    <div v-if="notSupport" class="check-failed">
+      <span>Current electron client not support</span>
+    </div>
 
     <transition name="fade">
       <div v-if="isShowControls && controls" class="control-wrap">
@@ -27,8 +47,8 @@
         />
 
         <div class="control-item time-info-wrap">
-          <span class="time-info time-current">{{ timeToHMS(mCurrent / 1000) }}</span>/
-          <span class="time-info time-duration">{{ timeToHMS(duration / 1000) }}</span>
+          <span class="time-info time-current">{{ timeToHMS(mCurrent / 1000) }}</span><span class="split-line _grey">/</span>
+          <span class="time-info time-duration _grey">{{ timeToHMS(duration / 1000) }}</span>
         </div>
 
         <div class="control-item actions-right">
@@ -57,6 +77,23 @@ import webglVideoRender from 'webgl-video-renderer'
 import SeekBar from '@/components/SeekBar'
 import screenfull from 'screenfull';
 
+function resetGl(gl) {
+  var numTextureUnits = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
+  for (var unit = 0; unit < numTextureUnits; ++unit) {
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+  gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+  gl.deleteTexture(gl.y.texture)
+  gl.deleteTexture(gl.u.texture)
+  gl.deleteTexture(gl.v.texture)
+}
+
 function timeToHMS(ms) {
   const h = parseInt(ms / (60 * 60)).toString().padStart(2, '0') //精确小时，用去余
   const m = parseInt((ms / 60) % 60).toString().padStart(2, '0') //剩余分钟就是用1小时等于60分钟进行趣余
@@ -77,6 +114,11 @@ export default {
     src: {
       type: String,
       default: null
+    },
+    // 暂停展示按钮
+    showShade: {
+      type: Boolean,
+      default: false
     },
     autoplay: {
       type: Boolean,
@@ -109,6 +151,7 @@ export default {
       current: 0,
       mCurrent: 0,
       volume: 0,
+      notSupport: false
     }
   },
   watch: {
@@ -130,13 +173,23 @@ export default {
   },
   computed: {},
   mounted() {
-    this.initPlayer()
     screenfull.on('error', event => {
-      console.error('Failed to enable fullscreen', event);
+      console.error('Failed to enable fullscreen', event)
     })
     screenfull.onchange(() => {
       this.isFullscreen = screenfull.isFullscreen
     })
+
+    try {
+      if (!electronAPI.process || !electronAPI.process.env['VLC_PLUGIN_PATH']) {
+        this.notSupport = true
+        return
+      }
+    } catch (e) {
+      console.error(e)
+      this.notSupport = true
+    }
+    this.initPlayer()
   },
   beforeDestroy() {
     this.cleanupPlayer(true)
@@ -179,6 +232,8 @@ export default {
       this.setPlaylistLoop(this.loop)
       this.volume = player.volume
       player.onFrameReady = (frame) => {
+        // console.log('onFrameReady', frame)
+        // TODO: 重复调用？
         renderContext.render(frame, frame.width, frame.height, frame.uOffset, frame.vOffset)
       }
       player.onPlaying = () => {
@@ -201,6 +256,16 @@ export default {
         this.debugLog('onLengthChanged', time)
         this.duration = time
       }
+      player.onEncounteredError = (err) => {
+        console.error('onEncounteredError', err)
+        this.$emit('error', err)
+        this.setPlaylistLoop(false)
+      }
+      // if (this.debug) {
+      //   player.onLogMessage = (level, message, format) => {
+      //     this.debugLog('onLogMessage', level, message, format)
+      //   }
+      // }
       this.updateSrc(this.src)
     },
     updateSrc(src) {
@@ -227,6 +292,9 @@ export default {
         if (isClose) {
           this.player.close()
           this.player = null
+          // TODO: 内存泄露无法解决
+          console.log('cleanupPlayer renderContext', this.renderContext)
+          // resetGl(this.renderContext.gl)
           this.renderContext = null
         }
       }
@@ -285,9 +353,9 @@ export default {
     toggleFullscreen() {
       if (screenfull.isEnabled) {
         if (!this.isFullscreen) {
-          screenfull.request();
+          screenfull.request()
         } else {
-          screenfull.exit();
+          screenfull.exit()
         }
       } else {
         alert('当前浏览器不支持全屏')
@@ -307,6 +375,7 @@ export default {
 }
 
 .vlc-player {
+  $darkBg: rgba(0, 0, 0, 0.38);
   display: flex;
   position: relative;
 
@@ -316,15 +385,61 @@ export default {
     }
   }
 
+  .check-failed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    background: black;
+  }
+
   &._fullscreen {
     position: fixed;
-    z-index: 100;
+    z-index: 1000;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     height: 100%;
     width: 100%;
+  }
+
+  .play-cover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .icon-wrap {
+      border: 2px solid white;
+      border-radius: 50%;
+      padding: 10px;
+      width: 70px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      cursor: pointer;
+
+      .iconfont {
+        font-size: 56px;
+        transform: translateX(7px);
+      }
+    }
+
   }
 
   canvas {
@@ -338,11 +453,12 @@ export default {
     position: absolute;
     top: 0;
     left: 0;
-    background: rgba(0, 0, 0, 0.38);
+    background: $darkBg;
     padding: 10px;
     color: white;
     font-size: 12px;
     font-family: 'Consolas', monospace;
+    z-index: 100;
   }
 
   .control-wrap {
@@ -350,11 +466,12 @@ export default {
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba(0, 0, 0, 0.38);
+    z-index: 10;
+    background: $darkBg;
     color: white;
     display: flex;
     align-items: center;
-    min-height: 40px;
+    height: 35px;
     font-size: 12px;
 
     .control-item {
@@ -378,15 +495,26 @@ export default {
 
     .time-info-wrap {
       display: flex;
+      font-size: 12px;
+      padding-left: 20px;
+      padding-right: 5px;
 
       .time-info {
         text-align: center;
-        padding: 10px;
+      }
+
+      .split-line {
+        padding: 5px;
+      }
+
+      ._grey {
+        opacity: .8;
       }
 
     }
 
     .actions-right {
+      padding-left: 5px;
       padding-right: 10px;
 
       .volume-toggle-wrap {
@@ -399,7 +527,7 @@ export default {
           width: 100px;
           visibility: hidden;
           opacity: 0;
-          background: rgba(0, 0, 0, 0.38);
+          background: $darkBg;
           padding: 0 5px;
         }
 

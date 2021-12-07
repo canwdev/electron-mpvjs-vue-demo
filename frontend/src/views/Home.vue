@@ -3,20 +3,24 @@
     <div class="demo-control">
       <div>
         <label>
-          <input type="checkbox" v-model="isEnable">
+          <input v-model="isEnable" type="checkbox">
           isEnable
         </label>
         <label>
-          <input type="checkbox" v-model="autoplay">
+          <input v-model="autoplay" type="checkbox">
           autoplay
         </label>
         <label>
-          <input type="checkbox" v-model="loop">
+          <input v-model="loop" type="checkbox">
           loop
         </label>
         <label>
-          <input type="checkbox" v-model="debug">
+          <input v-model="debug" type="checkbox">
           debug
+        </label>
+        <label>
+          <input v-model="persistControls" type="checkbox">
+          persistControls
         </label>
       </div>
 
@@ -45,6 +49,8 @@
       :autoplay="autoplay"
       :loop="loop"
       :debug="debug"
+      show-shade
+      :persist-controls="persistControls"
     ></VlcPlayer>
   </div>
 </template>
@@ -65,12 +71,13 @@ export default {
       autoplay: true,
       loop: true,
       debug: true,
+      persistControls: true,
       videoList: [
-        // 'http://127.0.0.1:8080/WebUnsupported/test.avi',
+        'http://127.0.0.1:8080/WebUnsupported/test.avi',
         'http://127.0.0.1:8080/WebUnsupported/video-15s.avi',
         'http://127.0.0.1:8080/WebUnsupported/HDRSample.mkv',
         'http://127.0.0.1:8080/WebUnsupported/SDRSample.mkv',
-        // 'http://127.0.0.1:8080/WebUnsupported/test.mkv',
+        'http://127.0.0.1:8080/WebUnsupported/test.mkv',
       ]
     }
   },

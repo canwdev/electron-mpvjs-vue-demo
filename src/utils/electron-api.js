@@ -6,5 +6,6 @@ const self = module.exports = {
   ...wmPreload,
   ...ipcHelperRender,
   pkg,
-  require
+  require,
+  process
 }
