@@ -26,7 +26,6 @@
   "dependencies": {
     "@canwdev/electron-utils": "^0.1.0",
     "@canwdev/electron-window-manager": "^0.1.7",
-    "webchimera.js": "*",
     "http-server": "^0.12.3",
     "portfinder": "^1.0.28"
   }

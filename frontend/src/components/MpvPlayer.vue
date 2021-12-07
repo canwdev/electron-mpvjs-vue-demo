@@ -1,6 +1,6 @@
 <template>
   <div
-    class="vlc-player"
+    class="mpv-player"
     :class="{'_fullscreen': isFullscreen, 'hide-cursor': !isShowControls}"
     @mousemove="handleMouseMove"
   >
@@ -16,15 +16,23 @@
         </div>
       </div>
     </transition>
+    <div
+      v-show="isPlaying"
+      class="play-cover"
+      @click="pause"
+    ></div>
 
     <div v-if="debug" class="debug-wrap">
       <div>src: {{ src }}</div>
       <button @click="logInfo">Log</button>
     </div>
-    <canvas
-      ref="vlcCanvas"
-      @click="togglePause"
-    ></canvas>
+
+
+    <embed
+      class="player-canvas"
+      ref="mvpEmbedRef"
+      type="application/x-mpvjs"
+    />
 
     <div v-if="notSupport" class="check-failed">
       <span>Current electron client not support</span>
@@ -47,8 +55,9 @@
         />
 
         <div class="control-item time-info-wrap">
-          <span class="time-info time-current">{{ timeToHMS(mCurrent / 1000) }}</span><span class="split-line _grey">/</span>
-          <span class="time-info time-duration _grey">{{ timeToHMS(duration / 1000) }}</span>
+          <span class="time-info time-current">{{ timeToHMS(mCurrent) }}</span><span
+          class="split-line _grey">/</span>
+          <span class="time-info time-duration _grey">{{ timeToHMS(duration) }}</span>
         </div>
 
         <div class="control-item actions-right">
@@ -58,7 +67,7 @@
                 :value="volume"
                 @input="volumeChange"
                 @change="volumeChange"
-                :max="200"
+                :max="100"
               />
             </div>
             <button @click="toggleVolume">{{ volume > 0 ? 'Vol.' : 'Mute' }}</button>
@@ -73,26 +82,9 @@
 
 <script>
 const {electronAPI} = window
-import webglVideoRender from 'webgl-video-renderer'
 import SeekBar from '@/components/SeekBar'
 import screenfull from 'screenfull';
-
-function resetGl(gl) {
-  var numTextureUnits = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
-  for (var unit = 0; unit < numTextureUnits; ++unit) {
-    gl.activeTexture(gl.TEXTURE0 + unit);
-    gl.bindTexture(gl.TEXTURE_2D, null);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
-  }
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-  gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-  gl.deleteTexture(gl.y.texture)
-  gl.deleteTexture(gl.u.texture)
-  gl.deleteTexture(gl.v.texture)
-}
+import Mpv from './mpv'
 
 function timeToHMS(ms) {
   const h = parseInt(ms / (60 * 60)).toString().padStart(2, '0') //精确小时，用去余
@@ -101,12 +93,10 @@ function timeToHMS(ms) {
   return h + ':' + m + ':' + s
 }
 
-const webChimera = electronAPI.require('webchimera.js')
-
 let timer = null
 
 export default {
-  name: 'VlcPlayer',
+  name: 'MpvPlayer',
   components: {
     SeekBar
   },
@@ -162,14 +152,9 @@ export default {
     },
     current(val) {
       if (!this.isSeeking) {
-        this.mCurrent = Math.min(this.duration, val)
+        this.mCurrent = val
       }
     },
-    loop(val) {
-      if (this.player) {
-        this.setPlaylistLoop(val)
-      }
-    }
   },
   computed: {},
   mounted() {
@@ -181,10 +166,10 @@ export default {
     })
 
     try {
-      if (!electronAPI.process || !electronAPI.process.env['VLC_PLUGIN_PATH']) {
-        this.notSupport = true
-        return
-      }
+      // if (!electronAPI.process || !electronAPI.process.env['VLC_PLUGIN_PATH']) {
+      //   this.notSupport = true
+      //   return
+      // }
     } catch (e) {
       console.error(e)
       this.notSupport = true
@@ -218,64 +203,52 @@ export default {
       console.info(...args)
     },
     initPlayer() {
-      const renderContext = webglVideoRender.setupCanvas(this.$refs.vlcCanvas)
-      this.renderContext = renderContext
-      const player = webChimera.createPlayer()
-      this.player = player
-      this.debugLog('initPlayer', {
-        player,
-        renderContext
-      })
-      // player.onLogMessage = (level, message, format) => {
-      //   this.debugLog('onLogMessage', message)
-      // }
-      this.setPlaylistLoop(this.loop)
-      this.volume = player.volume
-      player.onFrameReady = (frame) => {
-        // console.log('onFrameReady', frame)
-        // TODO: 重复调用？
-        renderContext.render(frame, frame.width, frame.height, frame.uOffset, frame.vOffset)
+      const element = this.$refs.mvpEmbedRef
+      this.player = new Mpv(element)
+      element.addEventListener('message', this.handlePlayerMessage)
+    },
+    handlePlayerMessage(event) {
+      const {type, data} = event.data
+      if (type === 'ready') {
+        this.updateSrc(this.src)
+        this.player.playerReady()
+      } else if (type === 'property_change') {
+        // this.debugLog(data)
+        const {name, value} = data
+        if (name === 'duration') {
+          this.duration = value
+        } else if (name === 'pause') {
+          if (!this.isSeeking) {
+            this.isPlaying = !value
+          }
+        } else if (name === 'volume') {
+          this.volume = value
+        } else if (name === 'time-pos') {
+          if (!this.isSeeking) {
+            this.current = value
+          }
+        } else if (name === 'eof-reached') {
+          // 到达文件末尾
+          if (this.loop && value) {
+            this.player.seek(0)
+            this.play()
+          }
+        } else if (name === 'filename') {
+          this.debugLog('SET_FILENAME', value)
+        } else {
+          this.debugLog(data)
+        }
+      } else {
+        this.debugLog(event.data)
       }
-      player.onPlaying = () => {
-        this.debugLog('onPlaying')
-        this.isPlaying = true
-      }
-      player.onPaused = () => {
-        this.debugLog('onPaused')
-        this.isPlaying = false
-      }
-      player.onStopped = () => {
-        this.debugLog('onStopped')
-        this.isPlaying = false
-      }
-      player.onTimeChanged = (time) => {
-        this.debugLog('onTimeChanged', time)
-        this.current = time
-      }
-      player.onLengthChanged = (time) => {
-        this.debugLog('onLengthChanged', time)
-        this.duration = time
-      }
-      player.onEncounteredError = (err) => {
-        console.error('onEncounteredError', err)
-        this.$emit('error', err)
-        this.setPlaylistLoop(false)
-      }
-      // if (this.debug) {
-      //   player.onLogMessage = (level, message, format) => {
-      //     this.debugLog('onLogMessage', level, message, format)
-      //   }
-      // }
-      this.updateSrc(this.src)
+
     },
     updateSrc(src) {
       this.cleanupPlayer()
       if (!src) {
         return
       }
-      // this.player.play(src)
-      this.player.playlist.clear()
-      this.player.playlist.add(src)
+      this.player.loadFile(this.src)
       if (this.autoplay) {
         this.play()
       }
@@ -283,61 +256,45 @@ export default {
     },
     cleanupPlayer(isClose) {
       if (this.player) {
-        this.player.pause()
-        this.isPlaying = false
-        this.duration = 0
-        this.current = 0
-        this.mCurrent = 0
-        this.player.stop()
         if (isClose) {
-          this.player.close()
-          this.player = null
-          // TODO: 内存泄露无法解决
-          console.log('cleanupPlayer renderContext', this.renderContext)
-          // resetGl(this.renderContext.gl)
-          this.renderContext = null
+          const element = this.$refs.mvpEmbedRef
+          element.removeEventListener('message', this.handlePlayerMessage)
+        } else {
+          this.stop()
         }
-      }
-
-      this.$nextTick(() => {
-        if (this.renderContext) {
-          this.renderContext.fillBlack()
-        }
-      })
-    },
-    setPlaylistLoop(val) {
-      if (val) {
-        this.player.playlist.mode = this.player.playlist.Loop
-      } else {
-        this.player.playlist.mode = this.player.playlist.Normal
       }
     },
     play() {
-      this.player.playlist.play()
+      if (this.duration === this.current) {
+        this.player.seek(0)
+      }
+      this.player.goPlay(true)
     },
     pause() {
-      this.player.playlist.pause()
+      this.player.goPlay(false)
     },
     togglePause() {
-      this.player.playlist.togglePause()
+      this.player.goPlay(!this.isPlaying)
     },
     stop() {
-      this.player.playlist.stop()
+      this.player.stop()
     },
     logInfo() {
-      console.info('renderContext', this.renderContext)
+      console.info('mvpEmbedRef', this.$refs.mvpEmbedRef)
       console.info('player', this.player)
     },
     progressSeeking(value) {
-      this.debugLog('progressSeeking', value)
+      // this.debugLog('progressSeeking', value)
       this.isSeeking = true
       this.mCurrent = Number(value)
     },
     progressChange(value) {
       value = Number(value)
-      this.debugLog('progressChange', value)
-      this.isSeeking = false
-      this.player.time = value
+      // this.debugLog('progressChange', value)
+      this.player.seek(value)
+      setTimeout(() => {
+        this.isSeeking = false
+      }, 100)
     },
     toggleVolume() {
       if (this.volume > 0) {
@@ -348,7 +305,7 @@ export default {
       }
     },
     volumeChange(value) {
-      this.volume = this.player.volume = Number(value)
+      this.player.setVolume(Number(value))
     },
     toggleFullscreen() {
       if (screenfull.isEnabled) {
@@ -374,10 +331,11 @@ export default {
   opacity: 0;
 }
 
-.vlc-player {
+.mpv-player {
   $darkBg: rgba(0, 0, 0, 0.38);
   display: flex;
   position: relative;
+  user-select: none;
 
   &.hide-cursor {
     * {
@@ -442,7 +400,7 @@ export default {
 
   }
 
-  canvas {
+  .player-canvas {
     width: 100%;
     height: auto;
     object-fit: contain;

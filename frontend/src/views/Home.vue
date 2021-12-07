@@ -43,7 +43,7 @@
     </div>
 
 
-    <VlcPlayer
+    <MpvPlayer
       v-if="isEnable"
       :src="videoSrc"
       :autoplay="autoplay"
@@ -51,17 +51,17 @@
       :debug="debug"
       show-shade
       :persist-controls="persistControls"
-    ></VlcPlayer>
+    ></MpvPlayer>
   </div>
 </template>
 
 <script>
-import VlcPlayer from '@/components/VlcPlayer'
+import MpvPlayer from '@/components/MpvPlayer'
 
 export default {
   name: 'PlayerTest',
   components: {
-    VlcPlayer
+    MpvPlayer
   },
   data() {
     return {
@@ -78,6 +78,7 @@ export default {
         'http://127.0.0.1:8080/WebUnsupported/HDRSample.mkv',
         'http://127.0.0.1:8080/WebUnsupported/SDRSample.mkv',
         'http://127.0.0.1:8080/WebUnsupported/test.mkv',
+        'http://127.0.0.1:8080/WebUnsupported/example_tos.mkv',
       ]
     }
   },
@@ -101,6 +102,10 @@ export default {
   max-width: 800px;
   margin: 0 auto;
   padding: 50px 0;
+
+  ::v-deep .player-canvas {
+    min-height: 420px;
+  }
 
   .demo-control {
     margin-bottom: 50px;

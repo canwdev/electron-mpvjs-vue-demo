@@ -1,26 +1,26 @@
-# electron-webchimera-vue Demo
+# Electron + Mpv.js + Vue Demo
 
 ![img](./screenshot.png)
 
-## webchimera.js
+## Install Setup
 
-https://github.com/RSATom/WebChimera.js
-
-In package.json add "dependencies":
-
-```
-"webchimera.js": "*"
-```
-
-In main.js add:
+1. get `mpvjs.node` from https://github.com/Kagami/mpv.js/releases
+2. get `mpv-1.dll` from libmpv ([Windows Download](https://mpv.srsfckn.biz/mpv-dev-latest.7z))
+3. put `mpvjs.node` and `mpv-1.dll` to `static/mpv.js/` folder
 
 ```
-process.env['VLC_PLUGIN_PATH'] = require('path').join(__dirname, '../node_modules/webchimera.js/plugins');
-```
-
-Install dependencies:
-
-```
+# Install dependencies
 yarn
-yarn install --ignore-scripts
+cd frontend
+yarn
+
+# Start frontend
+dev:frontend
+
+# Start electron
+dev:electron
 ```
+## Reference
+
+- https://github.com/Kagami/mpv.js
+- https://github.com/mchome/arclight

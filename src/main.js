@@ -8,7 +8,10 @@ const httpServer = require('http-server/lib/http-server')
 const portfinder = require('portfinder')
 const wm = require('./utils/wm-instance')
 
-process.env['VLC_PLUGIN_PATH'] = getCorrectPath(path.join(__dirname, '../'), 'node_modules/webchimera.js/plugins')
+let pluginPath = getCorrectPath(path.join(__dirname, '../'), 'static/mpv.js/mpvjs.node;application/x-mpvjs').split('\\').join('/')
+app.commandLine.appendSwitch("no-sandbox");
+app.commandLine.appendSwitch('ignore-gpu-blacklist')
+app.commandLine.appendSwitch('register-pepper-plugins', pluginPath)
 
 let port = 8000 //默认端口
 const host = '127.0.0.1'
@@ -25,10 +28,11 @@ const createWindow = () => {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: false,
-        webSecurity: false
+        webSecurity: false,
+        plugins: true
       },
       customConfig: {
-        isOpenDevTools: false,
+        isOpenDevTools: isDev,
         saveWindowStateName: 'mainWindow',
       }
     },
@@ -44,7 +48,7 @@ const createWindow = () => {
 app.on('ready', async () => {
   if (isDev) {
     createWindow()
-    require('vue-devtools').install()
+    // require('vue-devtools').install()
   } else {
     startClientProd(getCorrectPath(path.join(__dirname, '../'), 'frontend/dist'))
   }
