@@ -61,6 +61,18 @@
         </div>
 
         <div class="control-item actions-right">
+          <div v-if="rateList" class="volume-toggle-wrap">
+            <div class="volume-toggle-box">
+              <button
+                v-for="val in rateList"
+                :key="val"
+                :class="{active: currentRate === val}"
+                @click="setRate(val)"
+              >{{ val }}</button>
+            </div>
+            <button @click="toggleVolume">{{currentRate}}x</button>
+          </div>
+
           <div class="volume-toggle-wrap">
             <div class="volume-toggle-box">
               <SeekBar
@@ -72,6 +84,7 @@
             </div>
             <button @click="toggleVolume">{{ volume > 0 ? 'Vol.' : 'Mute' }}</button>
           </div>
+
           <button @click="toggleFullscreen">{{ isFullscreen ? 'Exit' : 'Ful.' }}</button>
         </div>
       </div>
@@ -129,7 +142,11 @@ export default {
     debug: {
       type: Boolean,
       default: false
-    }
+    },
+    rateList: {
+      type: Array,
+      default: () => [2, 1.75, 1.5, 1.25, 1, 0.5]
+    },
   },
   data() {
     return {
@@ -141,7 +158,8 @@ export default {
       current: 0,
       mCurrent: 0,
       volume: 0,
-      notSupport: false
+      notSupport: false,
+      currentRate: 1
     }
   },
   watch: {
@@ -223,6 +241,8 @@ export default {
           }
         } else if (name === 'volume') {
           this.volume = value
+        } else if (name === 'options/speed') {
+          this.currentRate = value
         } else if (name === 'time-pos') {
           if (!this.isSeeking) {
             this.current = value
@@ -278,6 +298,10 @@ export default {
     },
     stop() {
       this.player.stop()
+    },
+    setRate(val) {
+      console.log(val)
+      this.player.setSpeed(val)
     },
     logInfo() {
       console.info('mvpEmbedRef', this.$refs.mvpEmbedRef)
@@ -487,6 +511,10 @@ export default {
           opacity: 0;
           background: $darkBg;
           padding: 0 5px;
+
+          .active {
+            color: red;
+          }
         }
 
         &:hover {

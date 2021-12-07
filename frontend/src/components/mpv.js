@@ -1,9 +1,9 @@
 export default class Mpv {
-  constructor (element) {
+  constructor(element) {
     this.mpv = element
   }
 
-  playerReady () {
+  playerReady() {
     const observable = [
       'pause',
       'time-pos',
@@ -12,68 +12,88 @@ export default class Mpv {
       'filename',
       'volume',
       'mpv-version',
-      'ffmpeg-version'
+      'ffmpeg-version',
+      'options/speed',
     ]
     observable.forEach(v => this._setObserve(v))
     this._sendProperty('hwdec', 'auto')
   }
-  loadFile (filePath) {
+
+  loadFile(filePath) {
     this._sendCommand('loadfile', filePath)
   }
-  goPlay (play) {
+
+  goPlay(play) {
     this._sendProperty('pause', !play)
   }
-  stop () {
+
+  stop() {
     this._sendCommand('stop')
   }
-  setVolume (volume) {
+
+  setVolume(volume) {
     this._sendProperty('volume', volume)
   }
-  mute () {
+
+  mute() {
     this._sendProperty('mute', true)
   }
-  unmute () {
+
+  unmute() {
     this._sendProperty('mute', false)
   }
-  seek (seconds, relative = false) {
+
+  seek(seconds, relative = false) {
     this._sendCommand('seek', seconds.toString(), relative ? 'relative' : 'absolute')
   }
-  setTimePos (seconds) {
+
+  setSpeed(val) {
+    this._sendProperty('options/speed', val)
+  }
+
+  setTimePos(seconds) {
     this._sendProperty('time-pos', seconds.toString())
   }
-  screenshot (includeSubtitles = true) {
+
+  screenshot(includeSubtitles = true) {
     this._sendCommand('screenshot', includeSubtitles ? 'subtitles' : 'video', 'single')
   }
-  stat () {
+
+  stat() {
     this._sendCommand('keypress', 'I')
   }
-  getMPVVersion () {
+
+  getMPVVersion() {
     this._getPropertyAsync('mpv-version')
   }
-  getFFMPEGVersion () {
+
+  getFFMPEGVersion() {
     this._getPropertyAsync('ffmpeg-version')
   }
 
-  _sendCommand (cmd, ...args) {
+  _sendCommand(cmd, ...args) {
     args = args.map(arg => arg.toString())
     this.mpv.postMessage({
       type: 'command',
       data: [cmd].concat(args)
     })
   }
-  _sendProperty (name, value) {
+
+  _sendProperty(name, value) {
     this.mpv.postMessage({
       type: 'set_property',
-      data: { name, value }
+      data: {name, value}
     })
   }
-  _setObserve (name) {
+
+  _setObserve(name) {
     this.mpv.postMessage({
       type: 'observe_property',
       data: name
     })
   }
-  _getPropertyAsync (name) {
+
+  _getPropertyAsync(name) {
     this.mpv.postMessage({
       type: 'get_property_async',
       data: name
