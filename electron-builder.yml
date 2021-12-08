@@ -5,7 +5,7 @@ asarUnpack:
   - "static"
   - "public"
   - "frontend"
-  - "node_modules/webchimera.js"
+  - "static"
 files:
   - "public/**/*"
   - "frontend/dist/**/*"

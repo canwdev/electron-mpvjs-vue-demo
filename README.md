@@ -2,6 +2,9 @@
 
 ![img](./screenshot.png)
 
+- Electron 12.2.2
+- Vue ^2.6.11
+
 ## Install Setup
 
 1. get `mpvjs.node` from https://github.com/Kagami/mpv.js/releases
