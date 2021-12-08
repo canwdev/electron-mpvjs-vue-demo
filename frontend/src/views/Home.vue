@@ -56,7 +56,7 @@
 </template>
 
 <script>
-import MpvPlayer from '@/components/MpvPlayer'
+import MpvPlayer from '@/components/MpvPlayer/index'
 
 export default {
   name: 'PlayerTest',

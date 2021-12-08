@@ -95,7 +95,7 @@
 
 <script>
 const {electronAPI} = window
-import SeekBar from '@/components/SeekBar'
+import SeekBar from './SeekBar'
 import screenfull from 'screenfull';
 import Mpv from './mpv'
 
@@ -159,7 +159,8 @@ export default {
       mCurrent: 0,
       volume: 0,
       notSupport: false,
-      currentRate: 1
+      currentRate: 1,
+      ended: false
     }
   },
   watch: {
@@ -174,7 +175,6 @@ export default {
       }
     },
   },
-  computed: {},
   mounted() {
     screenfull.on('error', event => {
       console.error('Failed to enable fullscreen', event)
@@ -253,6 +253,7 @@ export default {
             this.player.seek(0)
             this.play()
           }
+          this.ended = value
         } else if (name === 'filename') {
           this.debugLog('SET_FILENAME', value)
         } else {
@@ -285,7 +286,7 @@ export default {
       }
     },
     play() {
-      if (this.duration === this.current) {
+      if (this.ended) {
         this.player.seek(0)
       }
       this.player.goPlay(true)
