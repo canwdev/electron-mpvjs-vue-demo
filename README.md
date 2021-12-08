@@ -18,10 +18,13 @@ cd frontend
 yarn
 
 # Start frontend
-dev:frontend
+yarn dev:frontend
 
 # Start electron
-dev:electron
+yarn dev:electron
+
+# build
+yarn build-dir
 ```
 ## Reference
 
